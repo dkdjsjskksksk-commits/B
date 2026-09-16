@@ -1,0 +1,11 @@
+/* Small-screen refinements for phones */
+@media(max-width:760px){
+  .topbar{padding:0 16px}.brand{font-size:17px;gap:7px}.brand-mark{width:25px;height:25px;border-radius:8px;font-size:14px}
+  .content-grid,.feed-section{min-width:0}
+}
+@media(max-width:430px){
+  main{padding:0 14px}.profile{padding:8px 10px;font-size:13px}.hero{margin:0 -2px;padding:31px 23px;border-radius:20px}.hero h1{font-size:27px}.hero-copy{font-size:13px;margin:14px 0 21px}.primary-button{width:100%;justify-content:space-between;padding:13px 16px}
+  .stats{margin:17px 0 34px;border-radius:12px}.stats div{padding:13px 4px}.stats strong{font-size:16px}.stats span{font-size:10px}.section-heading h2,.form-intro h2{font-size:22px}
+  .filter-row{flex-wrap:nowrap;overflow-x:auto;margin:19px -14px 17px;padding:0 14px 3px}.filter{white-space:nowrap;padding:7px 11px}.report-card{padding:17px 15px;gap:6px;border-radius:13px}.report-card h3{font-size:15px;padding-right:3px}.report-card p{font-size:12px}.duplicate-flag{right:10px;font-size:10px}.vote{min-width:48px;padding:7px 3px}
+  .side-panel{gap:11px}.notice-card,.category-card,.guide-card{padding:16px}.report-section{margin:45px -14px 0;padding:37px 14px;gap:20px}.report-form{padding:18px}.form-bottom{align-items:flex-end}.file-upload{max-width:112px;line-height:1.6}.file-upload em{display:block;margin-left:23px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.submit-button{white-space:nowrap;font-size:13px}.submit-button span{display:none}
+}
