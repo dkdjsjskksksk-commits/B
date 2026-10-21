@@ -1,21 +1,138 @@
-const reports = [
-  { id: 1, category: '급식', title: '오늘 급식에 알레르기 표시가 없어요', content: '메뉴 옆에 알레르기 유발 식품 표시가 빠져 있어서 확인하기 어려웠어요.', place: '본관 급식실', date: '오늘', votes: 84, duplicate: true },
-  { id: 2, category: '시설', title: '도서관 3층 콘센트가 작동하지 않아요', content: '창가 쪽 좌석 여러 곳에서 충전이 되지 않습니다. 시험기간이라 불편해요.', place: '도서관 3층', date: '어제', votes: 63, duplicate: true },
-  { id: 3, category: '안전', title: '후문 횡단보도 신호 시간이 너무 짧아요', content: '등교 시간에 학생이 많은데 초록불 시간이 짧아서 뛰어 건너는 친구들이 있어요.', place: '학교 후문', date: '2일 전', votes: 47 },
-  { id: 4, category: '학습', title: '2학년 5반 빔프로젝터 화면이 흐려요', content: '수업 자료의 글자가 잘 보이지 않아 뒷자리에서 불편합니다.', place: '2학년 5반', date: '3일 전', votes: 29 }
+const sampleAssessments = [
+  { id: 'sample-1', subject: '국어', title: '현대시 감상 발표', description: '수업 시간에 배운 작품 한 편을 골라 화자의 정서와 표현 방법을 설명해 주세요. 발표 시간은 3분 이내입니다.', assessment_date: futureDate(5), supplies: '발표 자료, 작품 분석 노트', class_name: '우리 반', created_at: new Date().toISOString() },
+  { id: 'sample-2', subject: '과학', title: '생태계 관찰 보고서', description: '주변 생태계를 관찰하고 생물 간 상호작용을 사진 또는 그림과 함께 정리합니다.', assessment_date: futureDate(9), supplies: '관찰 기록지, 필기구', class_name: '우리 반', created_at: new Date().toISOString() },
+  { id: 'sample-3', subject: '수학', title: '함수 단원 문제 풀이', description: '함수의 그래프와 실생활 활용 문제를 풀이 과정과 함께 제출합니다.', assessment_date: futureDate(14), supplies: '수학 공책, 교과서', class_name: '우리 반', created_at: new Date().toISOString() }
 ];
-let filter = '전체'; let newestFirst = false; let nextId = 5;
-const els = { list: document.querySelector('#reportList'), filters: document.querySelector('#filters'), title: document.querySelector('#titleInput'), content: document.querySelector('#contentInput'), analysis: document.querySelector('#aiAnalysis'), form: document.querySelector('#reportForm'), photo: document.querySelector('#photoInput'), fileName: document.querySelector('#fileName'), toast: document.querySelector('#toast') };
-const rules = { 급식:['급식','식당','메뉴','밥','음식','알레르기'], 시설:['고장','화장실','콘센트','정수기','에어컨','문','시설'], 학습:['수업','교실','시험','빔','프로젝터','학습','도서관'], 안전:['안전','위험','횡단보도','신호','계단','사고'], 생활:['소음','불편','동아리','휴지','분실','생활'] };
-function categorize(text) { const lower = text.toLowerCase(); return Object.entries(rules).map(([key, words]) => [key, words.filter(w => lower.includes(w)).length]).sort((a,b)=>b[1]-a[1])[0][1] ? Object.entries(rules).map(([key, words]) => [key, words.filter(w => lower.includes(w)).length]).sort((a,b)=>b[1]-a[1])[0][0] : '생활'; }
-function render() { let items = reports.filter(r => filter === '전체' || r.category === filter); items = [...items].sort((a,b)=> newestFirst ? b.id-a.id : b.votes-a.votes); els.list.innerHTML = items.map(r => `<article class="report-card ${r.duplicate?'duplicate':''}">${r.duplicate?'<span class="duplicate-flag">같은 문의가 있어요</span>':''}<div><div class="report-meta"><span class="category">${r.category}</span><span class="date">${r.date}</span></div><h3>${r.title}</h3><p>${r.content}</p><span class="location">⌖ ${r.place}</span></div><button class="vote ${r.voted?'voted':''}" data-id="${r.id}">♡ ${r.votes}</button></article>`).join('');
-  document.querySelector('#reportCount').textContent = 124 + reports.length; document.querySelector('#voteCount').textContent = reports.reduce((a,r)=>a+r.votes, 1419).toLocaleString();
-  const cats = ['급식','시설','학습','안전','생활']; const max = Math.max(...cats.map(c=>reports.filter(r=>r.category===c).length),1); document.querySelector('#categoryBars').innerHTML = cats.map(c=>{const n=reports.filter(r=>r.category===c).length;return `<div class="bar-row"><span>${c}</span><div class="bar"><i style="width:${Math.max(8,n/max*100)}%"></i></div><b>${n}</b></div>`}).join('');
+function futureDate(days) { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+const config = window.APP_CONFIG || {};
+const configured = Boolean(config.supabaseUrl && config.supabaseAnonKey && window.supabase);
+const db = configured ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
+const els = {
+  list: document.querySelector('#assessmentList'), empty: document.querySelector('#emptyState'), filters: document.querySelector('#filters'),
+  authButton: document.querySelector('#authButton'), authDialog: document.querySelector('#authDialog'), authForm: document.querySelector('#authForm'), authMessage: document.querySelector('#authMessage'),
+  previewLogin: document.querySelector('#previewLogin'), previewButton: document.querySelector('#previewButton'), addButton: document.querySelector('#addButton'), editor: document.querySelector('#assessmentDialog'), form: document.querySelector('#assessmentForm'),
+  toast: document.querySelector('#toast'), connection: document.querySelector('#connectionStatus'), count: document.querySelector('#assessmentCount'), upcoming: document.querySelector('#upcomingCount'), result: document.querySelector('#resultLabel')
+};
+let items = [];
+let subjectFilter = '전체';
+let isAdmin = false;
+let previewAdmin = false;
+let userId = null;
+
+function escapeHTML(value = '') { return String(value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]); }
+function formatDate(value) { if (!value) return '날짜 미정'; const d = new Date(`${value}T00:00:00`); return new Intl.DateTimeFormat('ko-KR', { year: 'numeric', month: 'long', day: 'numeric', weekday: 'short' }).format(d); }
+function daysUntil(value) { const a = new Date(); a.setHours(0,0,0,0); const b = new Date(`${value}T00:00:00`); return Math.round((b-a)/86400000); }
+function dateBadge(value) { const days = daysUntil(value); if (days < 0) return '지난 일정'; if (days === 0) return '오늘'; if (days === 1) return '내일'; return `D-${days}`; }
+function setStatus(mode, label) { els.connection.className = `connection-status ${mode}`; els.connection.querySelector('span').textContent = label; }
+function toast(message) { els.toast.textContent = message; els.toast.classList.add('show'); window.setTimeout(() => els.toast.classList.remove('show'), 3000); }
+function updateAdminUI() { els.authButton.textContent = isAdmin ? '관리자 로그아웃' : '관리자 로그인'; els.addButton.hidden = !isAdmin; document.body.classList.toggle('admin-mode', isAdmin); }
+
+function render() {
+  const filtered = items.filter(item => subjectFilter === '전체' || item.subject === subjectFilter).sort((a,b) => String(a.assessment_date).localeCompare(String(b.assessment_date)));
+  const upcoming = items.filter(item => daysUntil(item.assessment_date) >= 0).length;
+  els.count.textContent = items.length;
+  els.upcoming.textContent = upcoming;
+  els.result.textContent = `${filtered.length}개 일정`;
+  els.empty.hidden = filtered.length > 0;
+  els.list.innerHTML = filtered.map(item => {
+    const adminActions = isAdmin ? `<div class="card-actions"><button class="icon-button edit-button" data-id="${escapeHTML(item.id)}" aria-label="${escapeHTML(item.title)} 수정" type="button">✎<span>수정</span></button><button class="icon-button delete-button" data-id="${escapeHTML(item.id)}" aria-label="${escapeHTML(item.title)} 삭제" type="button">⌫<span>삭제</span></button></div>` : '';
+    const supplies = item.supplies?.trim() ? escapeHTML(item.supplies) : '준비물 안내 없음';
+    return `<article class="assessment-card"><div class="card-date"><span class="date-month">${escapeHTML(new Intl.DateTimeFormat('ko-KR',{month:'short'}).format(new Date(`${item.assessment_date}T00:00:00`)))}</span><strong>${escapeHTML(new Intl.DateTimeFormat('ko-KR',{day:'2-digit'}).format(new Date(`${item.assessment_date}T00:00:00`)))}</strong><span>${escapeHTML(new Intl.DateTimeFormat('ko-KR',{weekday:'short'}).format(new Date(`${item.assessment_date}T00:00:00`)))}</span></div><div class="card-main"><div class="card-meta"><span class="subject-tag subject-${escapeHTML(item.subject)}">${escapeHTML(item.subject)}</span><span class="date-label">${escapeHTML(formatDate(item.assessment_date))}</span><span class="countdown">${escapeHTML(dateBadge(item.assessment_date))}</span></div><h3>${escapeHTML(item.title)}</h3><p class="assessment-description">${escapeHTML(item.description)}</p><div class="supplies"><span class="supplies-icon">✓</span><span><b>준비물</b>${supplies}</span></div>${item.class_name ? `<span class="class-name">${escapeHTML(item.class_name)}</span>` : ''}</div>${adminActions}</article>`;
+  }).join('');
+  const next = items.filter(item => daysUntil(item.assessment_date) >= 0).sort((a,b)=>String(a.assessment_date).localeCompare(String(b.assessment_date)))[0];
+  document.querySelector('#updatedLabel').textContent = next ? `다음 일정 ${formatDate(next.assessment_date)}` : '새 일정이 등록되면 이곳에 표시돼요';
+  const classNames = [...new Set(items.map(item=>item.class_name).filter(Boolean))];
+  document.querySelector('#classLabel').textContent = classNames.length === 1 ? classNames[0] : '우리 반 공지 게시판';
 }
-function analyze(){ const text = `${els.title.value} ${els.content.value}`.trim(); if(!text){els.analysis.innerHTML='<span class="sparkle">✦</span><div><strong>AI 분류를 기다리고 있어요</strong><p>내용을 입력하면 알맞은 카테고리를 추천해 드릴게요.</p></div>';return} const c=categorize(text); const same=reports.filter(r=>r.category===c&&text.split(/\s+/).some(w=>w.length>2&&r.title.includes(w))).length; els.analysis.innerHTML=`<span class="sparkle">✦</span><div><strong>AI 추천 카테고리: ${c}</strong><p>${same?`비슷한 제보가 ${same}건 있어요. 함께 공감하면 해결이 빨라져요.`:'내용을 분석했어요. 제보 등록 후 담당 부서에 전달됩니다.'}</p></div>`; }
-els.filters.addEventListener('click',e=>{if(!e.target.matches('.filter'))return; document.querySelector('.filter.active').classList.remove('active');e.target.classList.add('active');filter=e.target.dataset.category;render()});
-els.list.addEventListener('click',e=>{const b=e.target.closest('.vote');if(!b)return;const r=reports.find(x=>x.id===+b.dataset.id);r.voted=!r.voted;r.votes+=r.voted?1:-1;render()});
-document.querySelector('#sortButton').addEventListener('click',e=>{newestFirst=!newestFirst;e.currentTarget.innerHTML=newestFirst?'최신순 <span>⌄</span>':'공감순 <span>⌄</span>';render()});
-els.title.addEventListener('input',analyze);els.content.addEventListener('input',analyze);els.photo.addEventListener('change',()=>els.fileName.textContent=els.photo.files[0]?.name||'선택 안 함');
-els.form.addEventListener('submit',e=>{e.preventDefault();const cat=categorize(`${els.title.value} ${els.content.value}`);reports.unshift({id:nextId++,category:cat,title:els.title.value,content:els.content.value,place:'장소 미입력',date:'방금 전',votes:0,duplicate:false});filter='전체';document.querySelector('.filter.active').classList.remove('active');document.querySelector('[data-category="전체"]').classList.add('active');els.form.reset();els.fileName.textContent='선택 안 함';analyze();render();els.toast.textContent=`제보가 등록되었어요. AI가 '${cat}' 카테고리로 분류했습니다.`;els.toast.classList.add('show');setTimeout(()=>els.toast.classList.remove('show'),3500);location.hash='feed'});
-render();
+
+async function loadAssessments() {
+  if (!db) { items = loadLocalItems(); setStatus('offline', '미리보기 모드'); render(); return; }
+  setStatus('loading', '불러오는 중');
+  const { data, error } = await db.from('assessments').select('*').order('assessment_date', { ascending: true });
+  if (error) { setStatus('error', '연결 오류'); toast(`게시물을 불러오지 못했어요: ${error.message}`); return; }
+  items = data || []; setStatus('online', '실시간 연결'); render();
+}
+function loadLocalItems() { try { const saved = localStorage.getItem('class-assessments'); return saved ? JSON.parse(saved) : structuredClone(sampleAssessments); } catch { return structuredClone(sampleAssessments); } }
+function saveLocalItems() { localStorage.setItem('class-assessments', JSON.stringify(items)); }
+async function checkAdmin(user) {
+  if (!user || !db) { isAdmin = false; userId = null; updateAdminUI(); render(); return; }
+  userId = user.id;
+  const { data, error } = await db.from('class_admins').select('user_id').eq('user_id', user.id).maybeSingle();
+  if (error) { isAdmin = false; els.authMessage.textContent = '관리자 권한을 확인하지 못했어요. 설정 안내를 확인해 주세요.'; }
+  else isAdmin = Boolean(data);
+  updateAdminUI(); render();
+}
+async function saveAssessment(record, id) {
+  if (!isAdmin) throw new Error('관리자 권한이 필요해요.');
+  if (!db) {
+    const localId = id || `local-${Date.now()}`;
+    items = id ? items.map(item => item.id === id ? { ...item, ...record, updated_at: new Date().toISOString() } : item) : [{ ...record, id: localId, created_at: new Date().toISOString() }, ...items];
+    saveLocalItems(); return;
+  }
+  const payload = { ...record, created_by: userId };
+  const { error } = id ? await db.from('assessments').update(payload).eq('id', id) : await db.from('assessments').insert(payload);
+  if (error) throw error;
+  await loadAssessments();
+}
+async function deleteAssessment(id) {
+  if (!isAdmin) throw new Error('관리자 권한이 필요해요.');
+  if (!db) { items = items.filter(item => item.id !== id); saveLocalItems(); return; }
+  const { error } = await db.from('assessments').delete().eq('id', id);
+  if (error) throw error;
+  await loadAssessments();
+}
+function openEditor(item) {
+  els.form.reset(); document.querySelector('#assessmentId').value = item?.id || '';
+  document.querySelector('#editorTitle').textContent = item ? '수행평가 일정 수정' : '수행평가 일정 추가';
+  document.querySelector('#subjectInput').value = item?.subject || '국어'; document.querySelector('#titleInput').value = item?.title || '';
+  document.querySelector('#descriptionInput').value = item?.description || ''; document.querySelector('#dateInput').value = item?.assessment_date || '';
+  document.querySelector('#suppliesInput').value = item?.supplies || ''; document.querySelector('#classInput').value = item?.class_name || (items.find(x => x.class_name)?.class_name || '');
+  document.querySelector('#saveMessage').textContent = ''; els.editor.showModal();
+}
+
+els.authButton.addEventListener('click', async () => {
+  if (isAdmin) {
+    if (db) await db.auth.signOut();
+    previewAdmin = false; isAdmin = false; updateAdminUI(); render(); toast('로그아웃했어요.'); return;
+  }
+  els.authMessage.textContent = '';
+  els.previewLogin.hidden = configured;
+  els.authDialog.showModal();
+});
+els.authForm.addEventListener('submit', async event => {
+  event.preventDefault(); els.authMessage.textContent = '';
+  if (!db) { els.authMessage.textContent = '실제 관리자 로그인을 사용하려면 Supabase 설정을 먼저 완료해 주세요.'; return; }
+  const { data, error } = await db.auth.signInWithPassword({ email: document.querySelector('#emailInput').value, password: document.querySelector('#passwordInput').value });
+  if (error) { els.authMessage.textContent = '로그인할 수 없어요. 이메일과 비밀번호를 확인해 주세요.'; return; }
+  await checkAdmin(data.user);
+  if (!isAdmin) { await db.auth.signOut(); els.authMessage.textContent = '이 계정에는 관리자 권한이 없어요.'; return; }
+  els.authDialog.close(); els.authForm.reset(); toast('관리자로 로그인했어요.');
+});
+els.previewButton.addEventListener('click', () => { previewAdmin = true; isAdmin = true; updateAdminUI(); els.authDialog.close(); render(); toast('관리자 미리보기 모드예요. 변경 사항은 이 브라우저에만 저장돼요.'); });
+els.addButton.addEventListener('click', () => openEditor());
+els.form.addEventListener('submit', async event => {
+  event.preventDefault(); const button = els.form.querySelector('[type="submit"]'); button.disabled = true; document.querySelector('#saveMessage').textContent = '';
+  const id = document.querySelector('#assessmentId').value || null;
+  const record = { subject: document.querySelector('#subjectInput').value, title: document.querySelector('#titleInput').value.trim(), description: document.querySelector('#descriptionInput').value.trim(), assessment_date: document.querySelector('#dateInput').value, supplies: document.querySelector('#suppliesInput').value.trim(), class_name: document.querySelector('#classInput').value.trim() };
+  try { await saveAssessment(record, id); if (!db) render(); els.editor.close(); toast(id ? '수행평가 일정을 수정했어요.' : '수행평가 일정을 추가했어요.'); }
+  catch (error) { document.querySelector('#saveMessage').textContent = error.message || '저장에 실패했어요.'; }
+  finally { button.disabled = false; }
+});
+els.list.addEventListener('click', async event => {
+  const edit = event.target.closest('.edit-button'); const remove = event.target.closest('.delete-button');
+  if (edit) openEditor(items.find(item => String(item.id) === edit.dataset.id));
+  if (remove) { const item = items.find(value => String(value.id) === remove.dataset.id); if (!item || !window.confirm(`“${item.title}” 일정을 삭제할까요?`)) return; try { await deleteAssessment(item.id); render(); toast('일정을 삭제했어요.'); } catch (error) { toast(`삭제에 실패했어요: ${error.message}`); } }
+});
+els.filters.addEventListener('click', event => { const button = event.target.closest('.filter'); if (!button) return; els.filters.querySelector('.active').classList.remove('active'); button.classList.add('active'); subjectFilter = button.dataset.subject; render(); });
+document.querySelectorAll('[data-close]').forEach(button => button.addEventListener('click', () => button.closest('dialog').close()));
+[els.authDialog, els.editor].forEach(dialog => dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); }));
+
+async function start() {
+  await loadAssessments();
+  if (!db) { setStatus('offline', '미리보기 모드'); return; }
+  const { data: { session } } = await db.auth.getSession(); await checkAdmin(session?.user);
+  db.auth.onAuthStateChange((_event, sessionData) => { window.setTimeout(() => checkAdmin(sessionData?.user), 0); });
+  db.channel('class-assessment-updates').on('postgres_changes', { event: '*', schema: 'public', table: 'assessments' }, () => loadAssessments()).subscribe(status => { if (status === 'SUBSCRIBED') setStatus('online', '실시간 연결'); });
+}
+start();
