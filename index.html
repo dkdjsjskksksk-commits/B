@@ -3,43 +3,28 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#f6f7ff" />
-    <title>우리 반 수행평가 일정</title>
+    <meta name="theme-color" content="#f3f1f8" />
+    <title>수행평가 일정</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Pretendard:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="style.css" />
-    <link rel="stylesheet" href="mobile.css" />
-    <link rel="stylesheet" href="geometry.css" />
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="config.js"></script>
   </head>
   <body>
-    <header class="topbar">
-      <a class="brand" href="#top" aria-label="우리 반 수행평가 홈"><span class="brand-mark">✦</span><span>우리 반 수행평가</span></a>
-      <div class="topbar-actions"><span id="connectionStatus" class="connection-status"><i></i><span>연결 확인 중</span></span><button id="authButton" class="profile" type="button">관리자 로그인</button></div>
-    </header>
-
+    <header class="topbar"><div id="connectionStatus" class="connection-status"><i></i><span>연결 확인 중</span></div><button id="authButton" class="profile" type="button">관리자 로그인</button></header>
     <main id="top">
-      <section class="hero">
-        <div class="hero-copy-block"><p class="eyebrow">우리 반 일정 한눈에 보기</p><h1>수행평가 준비,<br /><span>미리 알고 차근차근.</span></h1><p class="hero-copy">과목별 수행평가 날짜와 설명, 준비물을 한곳에서 확인해요.</p><div class="hero-meta"><span class="hero-icon">▦</span><span id="classLabel">우리 반 공지 게시판</span><span class="hero-dot">·</span><span id="updatedLabel">최신 일정으로 준비해요</span></div></div>
-        <div class="hero-visual" aria-hidden="true"><div class="visual-ring ring-a"></div><div class="visual-ring ring-b"></div><div class="calendar-tile"><span class="calendar-top"></span><b>오늘</b><strong>준비</strong><span class="calendar-star">✦</span></div><span class="float-pill pill-one">수행평가 일정</span><span class="float-pill pill-two">준비물 체크</span></div>
-      </section>
-
-      <section class="summary-row" aria-label="수행평가 요약"><div class="summary-card"><span class="summary-icon violet">▤</span><div><strong id="assessmentCount">0</strong><span>등록된 수행평가</span></div></div><div class="summary-card"><span class="summary-icon mint">◷</span><div><strong id="upcomingCount">0</strong><span>앞으로 예정된 일정</span></div></div><div class="summary-note"><span>✦</span><p>날짜와 준비물을 확인하고<br /><b>여유 있게 준비해요.</b></p></div></section>
-
+      <section class="page-heading"><p class="eyebrow">CLASS BOARD</p><div class="heading-row"><div><h1>수행평가 일정</h1><p id="updatedLabel" class="heading-copy">과목별 날짜와 준비물을 확인하세요.</p></div><button id="addButton" class="primary-button admin-only" type="button" hidden>＋ 일정 추가</button></div></section>
       <section class="board-section" id="board">
-        <div class="section-heading"><div><p class="eyebrow">CLASS BOARD</p><h2>수행평가 일정</h2><p class="section-copy">과목별 안내를 확인하고 준비물을 챙겨보세요.</p></div><button id="addButton" class="primary-button admin-only" type="button" hidden><span>＋</span> 일정 추가</button></div>
         <div class="toolbar"><div class="filter-row" id="filters" aria-label="과목 필터"><button class="filter active" data-subject="전체" type="button">전체</button><button class="filter" data-subject="국어" type="button">국어</button><button class="filter" data-subject="수학" type="button">수학</button><button class="filter" data-subject="영어" type="button">영어</button><button class="filter" data-subject="과학" type="button">과학</button><button class="filter" data-subject="사회" type="button">사회</button><button class="filter" data-subject="기타" type="button">기타</button></div><span id="resultLabel" class="result-label"></span></div>
         <div id="assessmentList" class="assessment-list" aria-live="polite"></div>
-        <div id="emptyState" class="empty-state" hidden><span>✧</span><strong>등록된 수행평가가 아직 없어요.</strong><p>새 일정이 올라오면 이곳에서 확인할 수 있어요.</p></div>
+        <div id="emptyState" class="empty-state" hidden><strong>등록된 일정이 없습니다.</strong><p>새 수행평가 일정은 이곳에서 확인할 수 있습니다.</p></div>
       </section>
-      <footer><span class="footer-mark">✦</span> 우리 반 수행평가 <span class="footer-divider">·</span> 함께 준비하는 학급 게시판</footer>
+      <footer>수행평가 일정</footer>
     </main>
-
-    <dialog id="authDialog" class="dialog"><form id="authForm" class="dialog-card"><button class="close-button" type="button" data-close aria-label="닫기">×</button><span class="dialog-icon">♙</span><p class="eyebrow">ADMIN ACCESS</p><h2>관리자 로그인</h2><p class="dialog-help">관리자 계정으로 로그인하면 게시물을 추가하거나 수정할 수 있어요.</p><label>이메일<input id="emailInput" type="email" autocomplete="username" required placeholder="관리자 이메일" /></label><label>비밀번호<input id="passwordInput" type="password" autocomplete="current-password" required placeholder="비밀번호" /></label><p id="authMessage" class="form-message" role="status"></p><button class="primary-button full-button" type="submit">로그인</button><div id="previewLogin" class="preview-login" hidden><span>연결 설정 전 미리보기</span><button id="previewButton" class="text-button" type="button">관리자 화면 보기 →</button></div></form></dialog>
-
-    <dialog id="assessmentDialog" class="dialog"><form id="assessmentForm" class="dialog-card assessment-dialog-card"><button class="close-button" type="button" data-close aria-label="닫기">×</button><span class="dialog-icon">✎</span><p class="eyebrow">CLASS NOTICE</p><h2 id="editorTitle">수행평가 일정 추가</h2><p class="dialog-help">날짜와 준비물을 정확히 적어주세요. 저장하면 게시판에 바로 반영돼요.</p><input id="assessmentId" type="hidden" /><label>과목<select id="subjectInput" required><option value="국어">국어</option><option value="수학">수학</option><option value="영어">영어</option><option value="과학">과학</option><option value="사회">사회</option><option value="기타">기타</option></select></label><label>수행평가 제목<input id="titleInput" maxlength="100" required placeholder="예: 2단원 발표 평가" /></label><label>설명<textarea id="descriptionInput" maxlength="1200" required rows="4" placeholder="평가 내용과 진행 방법을 적어주세요."></textarea></label><label>수행평가 날짜<input id="dateInput" type="date" required /></label><label>준비물<input id="suppliesInput" maxlength="300" placeholder="예: 교과서, 필기구 (없으면 비워두세요)" /></label><label>학급<input id="classInput" maxlength="40" placeholder="예: 2학년 3반" /></label><p id="saveMessage" class="form-message" role="status"></p><button class="primary-button full-button" type="submit">저장하기 <span>→</span></button></form></dialog>
+    <dialog id="authDialog" class="dialog"><form id="authForm" class="dialog-card"><button class="close-button" type="button" data-close aria-label="닫기">×</button><p class="eyebrow">ADMIN ACCESS</p><h2>관리자 로그인</h2><p class="dialog-help">관리자 계정으로 로그인하면 게시물을 관리할 수 있습니다.</p><label>이메일<input id="emailInput" type="email" autocomplete="username" required placeholder="관리자 이메일" /></label><label>비밀번호<input id="passwordInput" type="password" autocomplete="current-password" required placeholder="비밀번호" /></label><p id="authMessage" class="form-message" role="status"></p><button class="primary-button full-button" type="submit">로그인</button><div id="previewLogin" class="preview-login" hidden><span>연결 설정 전 미리보기</span><button id="previewButton" class="text-button" type="button">관리자 화면 보기 →</button></div></form></dialog>
+    <dialog id="assessmentDialog" class="dialog"><form id="assessmentForm" class="dialog-card assessment-dialog-card"><button class="close-button" type="button" data-close aria-label="닫기">×</button><p class="eyebrow">CLASS NOTICE</p><h2 id="editorTitle">수행평가 일정 추가</h2><p class="dialog-help">필요한 내용을 입력하고 저장하세요.</p><input id="assessmentId" type="hidden" /><label>과목<select id="subjectInput" required><option value="국어">국어</option><option value="수학">수학</option><option value="영어">영어</option><option value="과학">과학</option><option value="사회">사회</option><option value="기타">기타</option></select></label><label>수행평가 제목<input id="titleInput" maxlength="100" required placeholder="예: 2단원 발표 평가" /></label><label>설명<textarea id="descriptionInput" maxlength="1200" required rows="4" placeholder="평가 내용과 진행 방법"></textarea></label><label>수행평가 날짜<input id="dateInput" type="date" required /></label><label>준비물<input id="suppliesInput" maxlength="300" placeholder="준비물 (없으면 비워두세요)" /></label><label>학급<input id="classInput" maxlength="40" placeholder="예: 2학년 3반" /></label><p id="saveMessage" class="form-message" role="status"></p><button class="primary-button full-button" type="submit">저장하기</button></form></dialog>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
     <script src="app.js"></script>
   </body>

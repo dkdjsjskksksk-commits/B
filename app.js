@@ -1,10 +1,3 @@
-const sampleAssessments = [
-  { id: 'sample-1', subject: '국어', title: '현대시 감상 발표', description: '수업 시간에 배운 작품 한 편을 골라 화자의 정서와 표현 방법을 설명해 주세요. 발표 시간은 3분 이내입니다.', assessment_date: futureDate(5), supplies: '발표 자료, 작품 분석 노트', class_name: '우리 반', created_at: new Date().toISOString() },
-  { id: 'sample-2', subject: '과학', title: '생태계 관찰 보고서', description: '주변 생태계를 관찰하고 생물 간 상호작용을 사진 또는 그림과 함께 정리합니다.', assessment_date: futureDate(9), supplies: '관찰 기록지, 필기구', class_name: '우리 반', created_at: new Date().toISOString() },
-  { id: 'sample-3', subject: '수학', title: '함수 단원 문제 풀이', description: '함수의 그래프와 실생활 활용 문제를 풀이 과정과 함께 제출합니다.', assessment_date: futureDate(14), supplies: '수학 공책, 교과서', class_name: '우리 반', created_at: new Date().toISOString() }
-];
-function futureDate(days) { const d = new Date(); d.setDate(d.getDate() + days); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
-
 const config = window.APP_CONFIG || {};
 const configured = Boolean(config.supabaseUrl && config.supabaseAnonKey && window.supabase);
 const db = configured ? window.supabase.createClient(config.supabaseUrl, config.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } }) : null;
@@ -12,12 +5,11 @@ const els = {
   list: document.querySelector('#assessmentList'), empty: document.querySelector('#emptyState'), filters: document.querySelector('#filters'),
   authButton: document.querySelector('#authButton'), authDialog: document.querySelector('#authDialog'), authForm: document.querySelector('#authForm'), authMessage: document.querySelector('#authMessage'),
   previewLogin: document.querySelector('#previewLogin'), previewButton: document.querySelector('#previewButton'), addButton: document.querySelector('#addButton'), editor: document.querySelector('#assessmentDialog'), form: document.querySelector('#assessmentForm'),
-  toast: document.querySelector('#toast'), connection: document.querySelector('#connectionStatus'), count: document.querySelector('#assessmentCount'), upcoming: document.querySelector('#upcomingCount'), result: document.querySelector('#resultLabel')
+  toast: document.querySelector('#toast'), connection: document.querySelector('#connectionStatus'), result: document.querySelector('#resultLabel')
 };
 let items = [];
 let subjectFilter = '전체';
 let isAdmin = false;
-let previewAdmin = false;
 let userId = null;
 
 function escapeHTML(value = '') { return String(value).replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[ch]); }
@@ -30,9 +22,6 @@ function updateAdminUI() { els.authButton.textContent = isAdmin ? '관리자 로
 
 function render() {
   const filtered = items.filter(item => subjectFilter === '전체' || item.subject === subjectFilter).sort((a,b) => String(a.assessment_date).localeCompare(String(b.assessment_date)));
-  const upcoming = items.filter(item => daysUntil(item.assessment_date) >= 0).length;
-  els.count.textContent = items.length;
-  els.upcoming.textContent = upcoming;
   els.result.textContent = `${filtered.length}개 일정`;
   els.empty.hidden = filtered.length > 0;
   els.list.innerHTML = filtered.map(item => {
@@ -41,9 +30,7 @@ function render() {
     return `<article class="assessment-card"><div class="card-date"><span class="date-month">${escapeHTML(new Intl.DateTimeFormat('ko-KR',{month:'short'}).format(new Date(`${item.assessment_date}T00:00:00`)))}</span><strong>${escapeHTML(new Intl.DateTimeFormat('ko-KR',{day:'2-digit'}).format(new Date(`${item.assessment_date}T00:00:00`)))}</strong><span>${escapeHTML(new Intl.DateTimeFormat('ko-KR',{weekday:'short'}).format(new Date(`${item.assessment_date}T00:00:00`)))}</span></div><div class="card-main"><div class="card-meta"><span class="subject-tag subject-${escapeHTML(item.subject)}">${escapeHTML(item.subject)}</span><span class="date-label">${escapeHTML(formatDate(item.assessment_date))}</span><span class="countdown">${escapeHTML(dateBadge(item.assessment_date))}</span></div><h3>${escapeHTML(item.title)}</h3><p class="assessment-description">${escapeHTML(item.description)}</p><div class="supplies"><span class="supplies-icon">✓</span><span><b>준비물</b>${supplies}</span></div>${item.class_name ? `<span class="class-name">${escapeHTML(item.class_name)}</span>` : ''}</div>${adminActions}</article>`;
   }).join('');
   const next = items.filter(item => daysUntil(item.assessment_date) >= 0).sort((a,b)=>String(a.assessment_date).localeCompare(String(b.assessment_date)))[0];
-  document.querySelector('#updatedLabel').textContent = next ? `다음 일정 ${formatDate(next.assessment_date)}` : '새 일정이 등록되면 이곳에 표시돼요';
-  const classNames = [...new Set(items.map(item=>item.class_name).filter(Boolean))];
-  document.querySelector('#classLabel').textContent = classNames.length === 1 ? classNames[0] : '우리 반 공지 게시판';
+  document.querySelector('#updatedLabel').textContent = next ? `다음 일정 ${formatDate(next.assessment_date)}` : '등록된 일정이 없습니다.';
 }
 
 async function loadAssessments() {
@@ -53,7 +40,7 @@ async function loadAssessments() {
   if (error) { setStatus('error', '연결 오류'); toast(`게시물을 불러오지 못했어요: ${error.message}`); return; }
   items = data || []; setStatus('online', '실시간 연결'); render();
 }
-function loadLocalItems() { try { const saved = localStorage.getItem('class-assessments'); return saved ? JSON.parse(saved) : structuredClone(sampleAssessments); } catch { return structuredClone(sampleAssessments); } }
+function loadLocalItems() { try { return JSON.parse(localStorage.getItem('class-assessments') || '[]').filter(item => !String(item.id).startsWith('sample-')); } catch { return []; } }
 function saveLocalItems() { localStorage.setItem('class-assessments', JSON.stringify(items)); }
 async function checkAdmin(user) {
   if (!user || !db) { isAdmin = false; userId = null; updateAdminUI(); render(); return; }
@@ -94,7 +81,7 @@ function openEditor(item) {
 els.authButton.addEventListener('click', async () => {
   if (isAdmin) {
     if (db) await db.auth.signOut();
-    previewAdmin = false; isAdmin = false; updateAdminUI(); render(); toast('로그아웃했어요.'); return;
+    isAdmin = false; updateAdminUI(); render(); toast('로그아웃했어요.'); return;
   }
   els.authMessage.textContent = '';
   els.previewLogin.hidden = configured;
@@ -109,7 +96,7 @@ els.authForm.addEventListener('submit', async event => {
   if (!isAdmin) { await db.auth.signOut(); els.authMessage.textContent = '이 계정에는 관리자 권한이 없어요.'; return; }
   els.authDialog.close(); els.authForm.reset(); toast('관리자로 로그인했어요.');
 });
-els.previewButton.addEventListener('click', () => { previewAdmin = true; isAdmin = true; updateAdminUI(); els.authDialog.close(); render(); toast('관리자 미리보기 모드예요. 변경 사항은 이 브라우저에만 저장돼요.'); });
+els.previewButton.addEventListener('click', () => { isAdmin = true; updateAdminUI(); els.authDialog.close(); render(); toast('관리자 미리보기 모드예요. 변경 사항은 이 브라우저에만 저장돼요.'); });
 els.addButton.addEventListener('click', () => openEditor());
 els.form.addEventListener('submit', async event => {
   event.preventDefault(); const button = els.form.querySelector('[type="submit"]'); button.disabled = true; document.querySelector('#saveMessage').textContent = '';
